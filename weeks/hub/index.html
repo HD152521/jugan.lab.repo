@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>주간실험실 — 매주 실험 하나</title>
+  <meta name="description" content="매주 웹 실험 하나를 만들어 공개하는 주간실험실. 가설 → 제작 → 결과 리포트." />
+  <meta name="theme-color" content="#0f3d33" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+</head>
+<body>
+  <div class="phone">
+    <header class="lab-header">
+      <img class="lab-logo" src="profile.png" alt="주간실험실 디버깅 오리" width="72" height="72" />
+      <h1>주간<em>실험실</em></h1>
+      <span class="handle">@jugan.lab</span>
+      <p class="motto">매주 가설 하나를 세우고, 만들어서, 결과를 공개합니다.<br />실패도 실험입니다.</p>
+    </header>
+
+    <section class="season" aria-label="시즌 진행률">
+      <span class="season-label">SEASON 1</span>
+      <div class="season-bar"><div class="season-fill" id="season-fill"></div></div>
+      <span class="season-count" id="season-count"></span>
+    </section>
+
+    <main class="list" id="list" aria-label="실험 목록"></main>
+
+    <aside class="teaser">
+      <b>다음 실험 예고</b> — 이번 주 금요일, 새 실험이 공개됩니다.
+      인스타그램에서 제작 과정을 먼저 볼 수 있어요.
+    </aside>
+
+    <footer>
+      매주 금요일 실험 공개<br />
+      <a href="https://www.instagram.com/jugan.lab/">Instagram @jugan.lab</a>
+    </footer>
+  </div>
+
+  <script src="experiments.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

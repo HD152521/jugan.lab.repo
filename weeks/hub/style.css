@@ -1,0 +1,226 @@
+:root {
+  --green-deep: #0f3d33;
+  --green-dark: #0a2e26;
+  --green-card: #14493d;
+  --mint: #3ddc97;
+  --mint-soft: rgba(61, 220, 151, 0.14);
+  --cream: #edebe3;
+  --cream-dim: rgba(237, 235, 227, 0.62);
+  --cream-faint: rgba(237, 235, 227, 0.28);
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: 'SF Mono', 'Roboto Mono', ui-monospace, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  color: var(--cream);
+  background:
+    /* 모눈종이 텍스처 — 실험 노트 느낌 */
+    linear-gradient(rgba(61, 220, 151, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 220, 151, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, var(--green-deep), var(--green-dark) 85%);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.phone {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.25rem calc(3rem + env(safe-area-inset-bottom));
+}
+
+/* ---------- header ---------- */
+.lab-header { margin-bottom: 1.75rem; }
+
+.lab-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(61, 220, 151, 0.45);
+  box-shadow: 0 0 20px -4px rgba(61, 220, 151, 0.4);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.lab-header h1 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.lab-header h1 em {
+  font-style: normal;
+  color: var(--mint);
+}
+
+.lab-header .handle {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--cream-dim);
+  letter-spacing: 0.02em;
+}
+
+.lab-header .motto {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--cream-dim);
+}
+
+/* ---------- season progress ---------- */
+.season {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--mint-soft);
+  border: 1px solid rgba(61, 220, 151, 0.25);
+  border-radius: 14px;
+}
+
+.season-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--mint);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.season-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(237, 235, 227, 0.12);
+  overflow: hidden;
+}
+
+.season-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mint), #7ef0bd);
+}
+
+.season-count {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cream);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- experiment cards ---------- */
+.list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+.exp {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--green-card);
+  border: 1px solid rgba(237, 235, 227, 0.1);
+  border-radius: 18px;
+  padding: 1.1rem 1.15rem;
+  transition: transform 100ms ease, border-color 100ms ease;
+}
+
+a.exp:active { transform: scale(0.98); border-color: var(--mint); }
+
+.exp.live { border-color: rgba(61, 220, 151, 0.45); box-shadow: 0 0 24px -6px rgba(61, 220, 151, 0.35); }
+
+.exp.locked { opacity: 0.6; }
+
+.exp-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+.exp-no {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--mint);
+  letter-spacing: 0.08em;
+}
+
+.exp-status {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.exp-status.live { background: var(--mint); color: var(--green-deep); }
+.exp-status.building { background: rgba(237, 235, 227, 0.15); color: var(--cream); }
+.exp-status.planned { background: transparent; border: 1px solid var(--cream-faint); color: var(--cream-dim); }
+
+.exp h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.exp h2 .arrow { color: var(--mint); font-weight: 700; }
+
+.exp p {
+  margin-top: 0.4rem;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--cream-dim);
+}
+
+.exp-tag {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--mint);
+  background: var(--mint-soft);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+/* ---------- next teaser ---------- */
+.teaser {
+  margin-top: 1.5rem;
+  padding: 1rem 1.15rem;
+  border: 1.5px dashed rgba(61, 220, 151, 0.35);
+  border-radius: 18px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--cream-dim);
+}
+
+.teaser b { color: var(--mint); font-weight: 700; }
+
+/* ---------- footer ---------- */
+footer {
+  margin-top: 2.5rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--cream-faint);
+  line-height: 1.8;
+}
+
+footer a { color: var(--cream-dim); text-decoration: none; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  a.exp:active { transform: none; }
+}

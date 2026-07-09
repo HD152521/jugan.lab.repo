@@ -1,0 +1,45 @@
+# ---- outputs / 산출물 (git에 넣지 말 것) ----
+outputs/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+# 생성 이미지 (필요시 개별 예외 처리)
+# *.png
+# *.jpg
+
+# ---- env / secrets ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# ---- dependencies ----
+node_modules/
+.pnp
+.pnp.js
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+
+# ---- build ----
+.next/
+dist/
+build/
+out/
+.turbo/
+
+# ---- editor / os ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- vercel ----
+.vercel

@@ -9,6 +9,9 @@ outputs/
 # 생성 이미지 (필요시 개별 예외 처리)
 # *.png
 # *.jpg
+weeks/*/promo/*.mp4
+weeks/*/promo/*.png
+shared/video-pipeline/out/
 
 # ---- env / secrets ----
 .env

@@ -4,8 +4,9 @@
   const DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
   const STORE_KEY = 'yeonchasulsa:v1';
 
-  const VALID_LEAVE = [1, 2, 3, 4, 5];
   const VALID_YEAR = ['all', '2026', '2027'];
+  const LEAVE_MIN = 1;
+  const LEAVE_MAX = 15;
 
   const VALID_MODE = ['find', 'plan'];
   const BUDGET_MIN = 1;
@@ -15,6 +16,22 @@
     const v = Math.floor(Number(n));
     if (!Number.isFinite(v)) return 15;
     return Math.max(BUDGET_MIN, Math.min(BUDGET_MAX, v));
+  }
+
+  function clampLeave(n) {
+    const v = Math.floor(Number(n));
+    if (!Number.isFinite(v)) return 2;
+    return Math.max(LEAVE_MIN, Math.min(LEAVE_MAX, v));
+  }
+
+  // 효율(연차 1개당 일수)로 재미용 등급/칭호 부여
+  function tierFor(eff) {
+    if (eff >= 6) return { g: 'SSS', t: '연차 연금술사', e: '🧙' };
+    if (eff >= 5) return { g: 'SS', t: '갓성비', e: '🔥' };
+    if (eff >= 4) return { g: 'S', t: '꿀연휴', e: '🍯' };
+    if (eff >= 3) return { g: 'A', t: '알찬 연차', e: '👍' };
+    if (eff >= 2) return { g: 'B', t: '그럭저럭', e: '🙂' };
+    return { g: 'C', t: '그냥 연차', e: '😌' };
   }
 
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,7 +62,7 @@
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return fallback;
       return {
-        leave: VALID_LEAVE.includes(saved.leave) ? saved.leave : fallback.leave,
+        leave: Number.isFinite(saved.leave) ? clampLeave(saved.leave) : fallback.leave,
         year: VALID_YEAR.includes(saved.year) ? saved.year : fallback.year,
         excludeMyeongjeol: saved.excludeMyeongjeol === true,
         mode: VALID_MODE.includes(saved.mode) ? saved.mode : fallback.mode,
@@ -194,6 +211,93 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // 공유용 정사각 이미지(PNG) 생성 → 파일 공유 지원 시 공유, 아니면 다운로드
+  async function shareImage(s) {
+    const W = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = W;
+    const ctx = canvas.getContext && canvas.getContext('2d');
+    if (!ctx) {
+      await copyText(shareText(s));
+      return;
+    }
+    const FS = "'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+    const tier = tierFor(s.efficiency);
+
+    const g = ctx.createLinearGradient(0, 0, W, W);
+    g.addColorStop(0, '#fff6df');
+    g.addColorStop(1, '#ffd98a');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, W);
+
+    ctx.fillStyle = '#a9760b';
+    ctx.font = `800 46px ${FS}`;
+    ctx.fillText('🏖️ 연차술사', 90, 150);
+
+    ctx.font = `800 40px ${FS}`;
+    const pill = `${tier.e} ${tier.t} · ${tier.g}급`;
+    const pw = ctx.measureText(pill).width;
+    roundRect(ctx, 90, 208, pw + 64, 78, 39);
+    ctx.fillStyle = '#6b4700';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(pill, 122, 261);
+
+    ctx.fillStyle = '#7a5410';
+    ctx.font = `700 62px ${FS}`;
+    ctx.fillText(`연차 ${s.leave}개로`, 90, 470);
+
+    ctx.fillStyle = '#2b2008';
+    ctx.font = `900 230px ${FS}`;
+    const numText = `${s.length}`;
+    ctx.fillText(numText, 84, 690);
+    const nw = ctx.measureText(numText).width;
+    ctx.font = `800 90px ${FS}`;
+    ctx.fillText('일 연휴', 104 + nw, 690);
+
+    ctx.fillStyle = '#5a4a2a';
+    ctx.font = `600 44px ${FS}`;
+    ctx.fillText(`${fmtDate(s.start, true)} ~ ${fmtDate(s.end, true)}`, 90, 800);
+    ctx.font = `500 38px ${FS}`;
+    ctx.fillText(`연차 쓰는 날: ${fmtLeaveDays(s.leaveDays)}`, 90, 864);
+
+    ctx.fillStyle = '#a9760b';
+    ctx.font = `700 44px ${FS}`;
+    ctx.fillText(`연차 1개당 ${s.efficiency.toFixed(1)}일 🔥`, 90, 948);
+
+    ctx.fillStyle = '#8a6a2a';
+    ctx.font = `600 36px ${FS}`;
+    ctx.fillText('yeoncha.juganlab.com', 90, 1015);
+
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) return;
+    const file = new File([blob], `연차술사_${s.length}일연휴.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: `연차 ${s.leave}개로 ${s.length}일 연휴! — 연차술사` });
+        return;
+      } catch (_) { /* 취소/미지원 → 다운로드 폴백 */ }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
   function cellHTML(cell) {
     const cls = cell.holiday ? 'holiday' : cell.isOff ? '' : 'leave';
     const label = cell.holiday
@@ -208,8 +312,10 @@
   function cardHTML(s, idx, isBest) {
     const dday = daysUntil(s.start);
     const ddayLabel = dday <= 0 ? '진행 중!' : `D-${dday}`;
+    const tier = tierFor(s.efficiency);
     return `
       <article class="card${isBest ? ' best' : ''}">
+        <div class="card-grade grade-${tier.g}">${tier.e} ${tier.t} · ${tier.g}급</div>
         <div class="card-top">
           <div class="card-days">${s.length}<small>일 연휴</small></div>
           <div class="card-eff">연차 1개당 ${s.efficiency.toFixed(1)}일</div>
@@ -221,9 +327,10 @@
         </div>
         <p class="card-leave-note">연차 쓰는 날 → <b>${fmtLeaveDays(s.leaveDays)}</b></p>
         <div class="card-actions">
+          <button class="copy-btn" data-action="img" data-idx="${idx}">🖼️ 이미지</button>
           <button class="copy-btn" data-action="share" data-idx="${idx}">공유하기</button>
           <a class="copy-btn" href="${googleCalUrl(s)}" target="_blank" rel="noopener">🗓️ 구글 캘린더</a>
-          <button class="copy-btn" data-action="ics" data-idx="${idx}">📅 캘린더 파일(.ics)</button>
+          <button class="copy-btn" data-action="ics" data-idx="${idx}">📅 .ics</button>
         </div>
       </article>`;
   }
@@ -269,9 +376,14 @@
     }
 
     summaryEl.innerHTML =
-      `효율 좋은 연휴 <strong>${bridges}곳</strong>에 연차 <strong>${used}개</strong> 쓰면 총 <strong>${totalRest}일</strong> 쉬어요` +
+      `효율 좋은 연휴 <strong>${bridges}곳</strong> · 연차 <strong>${used}개</strong> 사용` +
       (leftover > 0 ? ` · 남은 <strong>${leftover}개</strong>는 자유롭게 🎉` : '');
 
+    const impact = `
+      <div class="impact">
+        <div class="impact-cap-top">연차 ${used}개만 잘 쓰면</div>
+        <div class="impact-num">올해 최대 <b>${totalRest}일</b> 쉴 수 있어요 😳</div>
+      </div>`;
     const cards = plan.map((s, i) => cardHTML(s, i, false)).join('');
     const leftoverCard =
       leftover > 0
@@ -280,7 +392,7 @@
              <p>공휴일에 붙일 만한 알짜 자리는 여기까지예요. 나머지 ${leftover}개는 아껴뒀다가 원하는 때 자유롭게 쓰세요.</p>
            </article>`
         : '';
-    resultsEl.innerHTML = cards + leftoverCard;
+    resultsEl.innerHTML = impact + cards + leftoverCard;
   }
 
   resultsEl.addEventListener('click', (e) => {
@@ -289,6 +401,7 @@
     const s = currentStreaks[Number(btn.dataset.idx)];
     if (!s) return;
     if (btn.dataset.action === 'share') shareStreak(s, btn);
+    else if (btn.dataset.action === 'img') shareImage(s);
     else downloadICS(s);
   });
 
@@ -343,6 +456,18 @@
     // 포커스 벗어날 때 표시값도 정규화
     budgetInput.addEventListener('blur', () => {
       budgetInput.value = state.budget;
+    });
+  }
+
+  const leaveInput = document.getElementById('leave-input');
+  if (leaveInput) {
+    leaveInput.addEventListener('input', () => {
+      state.leave = clampLeave(leaveInput.value);
+      saveState();
+      render();
+    });
+    leaveInput.addEventListener('blur', () => {
+      leaveInput.value = state.leave;
     });
   }
 
@@ -419,16 +544,13 @@
   // 복원된 state를 컨트롤에 반영 (HTML 기본값 덮어쓰기)
   function syncControls() {
     document
-      .querySelectorAll('.leave-btn')
-      .forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.leave) === state.leave)));
-    document
       .querySelectorAll('.year-btn')
       .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === state.year)));
     if (mjBtn) mjBtn.setAttribute('aria-pressed', String(state.excludeMyeongjeol));
     if (budgetInput) budgetInput.value = state.budget;
+    if (leaveInput) leaveInput.value = state.leave;
   }
 
-  bindPicker('.leave-btn', 'leave', (btn) => Number(btn.dataset.leave));
   bindPicker('.year-btn', 'year', (btn) => btn.dataset.year);
 
   applyMode();

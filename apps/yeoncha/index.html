@@ -167,33 +167,6 @@ body {
   letter-spacing: 0.04em;
 }
 
-.leave-picker { display: flex; gap: 0.5rem; }
-
-.leave-btn {
-  flex: 1;
-  padding: 0.85rem 0;
-  font-family: inherit;
-  font-size: 1.05rem;
-  font-weight: 700;
-  border: 1.5px solid oklch(24% 0.02 60 / 0.12);
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
-}
-
-.leave-btn:hover { transform: translateY(-2px); border-color: var(--gold-deep); }
-
-.leave-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
-
-.leave-btn[aria-pressed='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: oklch(98% 0.02 90);
-  transform: translateY(-2px);
-}
-
 .year-picker { display: flex; gap: 0.4rem; }
 
 .year-btn {
@@ -331,6 +304,37 @@ body {
   border-radius: 0 0 0 12px;
 }
 
+/* 효율 등급/칭호 배지 */
+.card-grade {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  margin-bottom: 0.7rem;
+}
+.grade-SSS { background: linear-gradient(120deg, #7c3aed, #c026d3); color: #fff; }
+.grade-SS { background: linear-gradient(120deg, var(--gold-deep), var(--accent)); color: #fff; }
+.grade-S { background: var(--gold-soft); color: var(--gold-deep); }
+.grade-A { background: oklch(92% 0.08 150); color: oklch(42% 0.12 150); }
+.grade-B { background: oklch(92% 0.02 250); color: var(--ink-soft); }
+.grade-C { background: oklch(94% 0 0); color: var(--ink-soft); }
+
+/* 플래너 임팩트 스탯 */
+.impact {
+  text-align: center;
+  padding: 1.3rem 1rem 0.4rem;
+}
+.impact-cap-top { font-size: 0.9rem; font-weight: 700; color: var(--ink-soft); }
+.impact-num {
+  font-size: clamp(1.35rem, 5.5vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 0.35rem;
+}
+.impact-num b { font-size: 1.35em; color: var(--gold-deep); }
+
 .card-top { display: flex; align-items: flex-end; gap: 0.9rem; margin-bottom: 0.35rem; }
 
 .card-days {
@@ -426,7 +430,7 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leave-btn, .leave-btn:hover, .leave-btn[aria-pressed='true'] { transform: none; transition: none; }
+  * { transition: none !important; }
 }
 </style>
 </head>
@@ -449,17 +453,15 @@ footer {
 
     <section class="controls" aria-label="검색 조건">
       <div id="controls-find">
-        <p class="control-label" id="leave-label">쓸 수 있는 연차</p>
-        <div class="leave-picker" role="group" aria-labelledby="leave-label">
-          <button class="leave-btn" data-leave="1" aria-pressed="false">1개</button>
-          <button class="leave-btn" data-leave="2" aria-pressed="true">2개</button>
-          <button class="leave-btn" data-leave="3" aria-pressed="false">3개</button>
-          <button class="leave-btn" data-leave="4" aria-pressed="false">4개</button>
-          <button class="leave-btn" data-leave="5" aria-pressed="false">5개</button>
+        <p class="control-label" id="leave-label">쓸 수 있는 연차 — 최장 연휴 찾기</p>
+        <div class="budget-row">
+          <input id="leave-input" class="budget-input" type="number" min="1" max="15" step="1"
+            inputmode="numeric" value="2" aria-labelledby="leave-label" />
+          <span class="budget-unit">개</span>
         </div>
       </div>
       <div id="controls-plan" hidden>
-        <p class="control-label" id="budget-label">남은 연차 (총 몇 개 쓸 수 있나요)</p>
+        <p class="control-label" id="budget-label">남은 연차 — 최고 효율로 배분</p>
         <div class="budget-row">
           <input id="budget-input" class="budget-input" type="number" min="1" max="40" step="1"
             inputmode="numeric" value="15" aria-labelledby="budget-label" />

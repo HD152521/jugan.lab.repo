@@ -1,6 +1,6 @@
 // 연휴 탐색 알고리즘 — 순수 함수만 (브라우저/Node 공용)
 
-const MAX_WINDOW_DAYS = 16;
+const MAX_WINDOW_DAYS = 25; // 연차를 직접 입력(최대 15개)해도 긴 연휴가 잘리지 않게
 const MIN_STREAK_DAYS = 4;
 
 /**

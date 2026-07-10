@@ -15,6 +15,7 @@
 
 ## 주차 인덱스
 
+- [w01-yeoncha](./weeks/w01-yeoncha/) — 연차술사 (앱: [`apps/yeoncha`](./apps/yeoncha/))
 - [w01-example](./weeks/w01-example/) — (템플릿)
 
 ## Git 사용법

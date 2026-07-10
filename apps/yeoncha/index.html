@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>연차술사 — 연차를 황금연휴로</title>
+<meta name="description" content="공휴일에 연차를 붙여 가장 긴 연휴를 만들어주는 계산기. 연차 몇 개로 며칠까지 쉴 수 있을까?" />
+<style>
+:root {
+  --bg: oklch(97.5% 0.014 85);
+  --surface: oklch(100% 0 0);
+  --ink: oklch(24% 0.02 60);
+  --ink-soft: oklch(45% 0.02 60);
+  --gold: oklch(78% 0.14 85);
+  --gold-deep: oklch(66% 0.13 75);
+  --gold-soft: oklch(93% 0.06 90);
+  --accent: oklch(58% 0.19 25);
+  --accent-soft: oklch(94% 0.04 25);
+  --weekend: oklch(92% 0.02 250);
+  --radius-card: 20px;
+  --shadow-card: 0 2px 4px oklch(24% 0.02 60 / 0.05), 0 12px 32px -8px oklch(66% 0.13 75 / 0.25);
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+img { max-width: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, oklch(90% 0.08 90 / 0.55), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 2.5rem) 1.25rem 5rem;
+}
+
+/* ---------- header ---------- */
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+.brand-mark {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: linear-gradient(120deg, var(--gold-deep), var(--gold));
+  color: oklch(100% 0 0);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+}
+
+.brand-sub {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.hero h1 {
+  font-size: clamp(1.9rem, 7vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--gold-deep), oklch(72% 0.15 60));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero p {
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ---------- controls ---------- */
+.controls {
+  margin: 2rem 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.control-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+
+.leave-picker { display: flex; gap: 0.5rem; }
+
+.leave-btn {
+  flex: 1;
+  padding: 0.85rem 0;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border: 1.5px solid oklch(24% 0.02 60 / 0.12);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.leave-btn:hover { transform: translateY(-2px); border-color: var(--gold-deep); }
+
+.leave-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.leave-btn[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: oklch(98% 0.02 90);
+  transform: translateY(-2px);
+}
+
+.year-picker { display: flex; gap: 0.4rem; }
+
+.year-btn {
+  padding: 0.4rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.year-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.year-btn[aria-pressed='true'] { background: var(--gold-soft); color: var(--gold-deep); }
+
+/* ---------- summary line ---------- */
+.summary {
+  margin: 1.5rem 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.summary strong { color: var(--gold-deep); }
+
+/* ---------- result cards ---------- */
+.results { display: flex; flex-direction: column; gap: 1rem; }
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 1.4rem 1.4rem 1.2rem;
+  box-shadow: var(--shadow-card);
+  border: 1px solid oklch(78% 0.14 85 / 0.25);
+}
+
+.card.best { border: 1.5px solid var(--gold-deep); position: relative; overflow: hidden; }
+
+.card.best::before {
+  content: 'BEST';
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: oklch(100% 0 0);
+  background: linear-gradient(120deg, var(--gold-deep), var(--gold));
+  padding: 0.35rem 0.9rem;
+  border-radius: 0 0 0 12px;
+}
+
+.card-top { display: flex; align-items: flex-end; gap: 0.9rem; margin-bottom: 0.35rem; }
+
+.card-days {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.card-days small { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+
+.card-eff {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold-deep);
+  background: var(--gold-soft);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.3rem;
+}
+
+.card-dday {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.3rem;
+}
+
+.card-range { font-size: 0.92rem; color: var(--ink-soft); margin-bottom: 1rem; }
+
+.card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.9rem; }
+
+.strip {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+}
+
+.cell {
+  flex: 0 0 38px;
+  border-radius: 9px;
+  padding: 0.35rem 0 0.4rem;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  background: var(--weekend);
+  color: var(--ink-soft);
+}
+
+.cell .d { display: block; font-size: 0.85rem; font-weight: 700; color: var(--ink); }
+
+.cell.holiday { background: var(--gold-soft); color: var(--gold-deep); }
+.cell.holiday .d { color: var(--gold-deep); }
+
+.cell.leave { background: var(--accent-soft); color: var(--accent); outline: 1.5px dashed var(--accent); outline-offset: -1.5px; }
+.cell.leave .d { color: var(--accent); }
+
+.card-leave-note { margin-top: 0.75rem; font-size: 0.85rem; color: var(--ink-soft); }
+.card-leave-note b { color: var(--accent); font-weight: 700; }
+
+.copy-btn {
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid oklch(24% 0.02 60 / 0.15);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.copy-btn:hover { border-color: var(--gold-deep); color: var(--gold-deep); }
+.copy-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.empty { color: var(--ink-soft); font-size: 0.9rem; padding: 2rem 0; text-align: center; }
+
+/* ---------- footer ---------- */
+footer {
+  margin-top: 3rem;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leave-btn, .leave-btn:hover, .leave-btn[aria-pressed='true'] { transform: none; transition: none; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <span class="brand-mark">연차술사</span>
+      <span class="brand-sub">weekly.ship — 1주차 프로젝트</span>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-heading">
+      <h1 id="hero-heading">연차 몇 개로<br /><em>며칠</em>까지 쉴 수 있을까?</h1>
+      <p>2026 하반기~2027 공휴일·대체공휴일에 연차를 붙여서<br />가장 긴 연휴를 만들어드립니다.</p>
+    </section>
+
+    <section class="controls" aria-label="검색 조건">
+      <div>
+        <p class="control-label" id="leave-label">쓸 수 있는 연차</p>
+        <div class="leave-picker" role="group" aria-labelledby="leave-label">
+          <button class="leave-btn" data-leave="1" aria-pressed="false">1개</button>
+          <button class="leave-btn" data-leave="2" aria-pressed="true">2개</button>
+          <button class="leave-btn" data-leave="3" aria-pressed="false">3개</button>
+          <button class="leave-btn" data-leave="4" aria-pressed="false">4개</button>
+          <button class="leave-btn" data-leave="5" aria-pressed="false">5개</button>
+        </div>
+      </div>
+      <div>
+        <p class="control-label" id="year-label">기간</p>
+        <div class="year-picker" role="group" aria-labelledby="year-label">
+          <button class="year-btn" data-year="all" aria-pressed="true">전체</button>
+          <button class="year-btn" data-year="2026" aria-pressed="false">2026 남은 기간</button>
+          <button class="year-btn" data-year="2027" aria-pressed="false">2027</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="summary" id="summary" aria-live="polite"></p>
+    <main class="results" id="results"></main>
+
+    <footer>
+      공휴일 데이터: 2026~2027 법정공휴일·대체공휴일 기준 (2026.7. 검증) ·
+      근로자의 날은 제외 · 임시공휴일은 발표 시 반영<br />
+      매주 금요일, 새 프로젝트 하나 — @weekly.ship
+    </footer>
+  </div>
+
+  <script src="holidays.js"></script>
+  <script src="optimizer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

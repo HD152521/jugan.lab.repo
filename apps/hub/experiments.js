@@ -8,7 +8,7 @@ const EXPERIMENTS = [
     desc: '연차 몇 개로 며칠까지 쉴 수 있을까? 공휴일에 연차를 붙여 최장 연휴를 계산',
     tag: '직장인',
     status: 'live',
-    url: null, // TODO: 배포 후 실제 링크 입력
+    url: 'https://yeoncha.juganlab.com',
   },
   {
     no: 2,

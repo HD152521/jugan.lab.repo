@@ -17,9 +17,30 @@
     return Math.max(BUDGET_MIN, Math.min(BUDGET_MAX, v));
   }
 
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  // HTML 삽입 시 사용자 입력 이스케이프 (회사 휴무 이름 등)
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 저장된 회사 휴무일 정제 — 범위 내 유효 날짜만, 이름 12자 제한
+  function sanitizeCustom(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const c of list) {
+      if (!c || typeof c.date !== 'string' || !ISO_RE.test(c.date)) continue;
+      if (c.date < RANGE_START || c.date > RANGE_END || seen.has(c.date)) continue;
+      seen.add(c.date);
+      out.push({ date: c.date, label: (typeof c.label === 'string' ? c.label : '').slice(0, 12) || '회사 휴무' });
+    }
+    return out;
+  }
+
   // 마지막 선택을 localStorage에서 복원 — 없거나 손상 시 기본값
   function loadState() {
-    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false, mode: 'find', budget: 15 };
+    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false, mode: 'find', budget: 15, customHolidays: [] };
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return fallback;
@@ -29,6 +50,7 @@
         excludeMyeongjeol: saved.excludeMyeongjeol === true,
         mode: VALID_MODE.includes(saved.mode) ? saved.mode : fallback.mode,
         budget: Number.isFinite(saved.budget) ? clampBudget(saved.budget) : fallback.budget,
+        customHolidays: sanitizeCustom(saved.customHolidays),
       };
     } catch (_) {
       return fallback;
@@ -45,7 +67,14 @@
 
   const state = loadState();
 
-  const calendar = buildCalendar(HOLIDAYS, RANGE_START, RANGE_END);
+  // 기본 공휴일 + 사용자가 추가한 회사 휴무일을 합쳐 달력 생성 (휴무일 변경 시 재생성)
+  let calendar;
+  function rebuildCalendar() {
+    const merged = { ...HOLIDAYS };
+    for (const c of state.customHolidays) merged[c.date] = c.label;
+    calendar = buildCalendar(merged, RANGE_START, RANGE_END);
+  }
+  rebuildCalendar();
   const TODAY_ISO = toISO(new Date());
 
   const $ = (sel) => document.querySelector(sel);
@@ -176,7 +205,7 @@
         ? DOW_KO[cell.dow]
         : '연차';
     const [, m, d] = cell.iso.split('-').map(Number);
-    return `<div class="cell ${cls}"><span class="d">${m}/${d}</span>${label}</div>`;
+    return `<div class="cell ${cls}"><span class="d">${m}/${d}</span>${esc(label)}</div>`;
   }
 
   function cardHTML(s, idx, isBest) {
@@ -320,6 +349,76 @@
     });
   }
 
+  // ---------- 회사 쉬는날 (사용자 추가 휴무일) ----------
+  const customDateInput = document.getElementById('custom-date');
+  const customLabelInput = document.getElementById('custom-label');
+  const customAddBtn = document.getElementById('custom-add-btn');
+  const customListEl = document.getElementById('custom-list');
+  const customErrorEl = document.getElementById('custom-error');
+  const customCountEl = document.getElementById('custom-count');
+  const DOW_KO_PAREN = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return `${m}/${d}(${DOW_KO[new Date(y, m - 1, d).getDay()]})`;
+  };
+
+  function renderCustomList() {
+    if (customCountEl) {
+      const n = state.customHolidays.length;
+      customCountEl.textContent = n ? `(${n})` : '';
+    }
+    if (!customListEl) return;
+    const sorted = [...state.customHolidays].sort((a, b) => a.date.localeCompare(b.date));
+    customListEl.innerHTML = sorted
+      .map(
+        (c) =>
+          `<li><span class="cd">${DOW_KO_PAREN(c.date)}</span><span class="cl">${esc(c.label)}</span>` +
+          `<button class="cx" data-remove="${c.date}" aria-label="${esc(c.label)} 삭제">✕</button></li>`
+      )
+      .join('');
+  }
+
+  function addCustom() {
+    if (customErrorEl) customErrorEl.textContent = '';
+    const date = customDateInput ? customDateInput.value : '';
+    const label = ((customLabelInput && customLabelInput.value) || '').trim().slice(0, 12) || '회사 휴무';
+    if (!date || !ISO_RE.test(date)) {
+      if (customErrorEl) customErrorEl.textContent = '날짜를 선택하세요.';
+      return;
+    }
+    if (date < RANGE_START || date > RANGE_END) {
+      if (customErrorEl) customErrorEl.textContent = '2026.7 ~ 2027 기간만 추가할 수 있어요.';
+      return;
+    }
+    if (state.customHolidays.some((c) => c.date === date)) {
+      if (customErrorEl) customErrorEl.textContent = '이미 추가된 날짜예요.';
+      return;
+    }
+    state.customHolidays = [...state.customHolidays, { date, label }];
+    if (customLabelInput) customLabelInput.value = '';
+    saveState();
+    rebuildCalendar();
+    renderCustomList();
+    render();
+  }
+
+  if (customAddBtn) customAddBtn.addEventListener('click', addCustom);
+  if (customLabelInput) {
+    customLabelInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addCustom();
+    });
+  }
+  if (customListEl) {
+    customListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-remove]');
+      if (!btn) return;
+      state.customHolidays = state.customHolidays.filter((c) => c.date !== btn.dataset.remove);
+      saveState();
+      rebuildCalendar();
+      renderCustomList();
+      render();
+    });
+  }
+
   // 복원된 state를 컨트롤에 반영 (HTML 기본값 덮어쓰기)
   function syncControls() {
     document
@@ -337,5 +436,6 @@
 
   applyMode();
   syncControls();
+  renderCustomList();
   render();
 })();

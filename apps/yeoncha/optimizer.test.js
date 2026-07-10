@@ -34,6 +34,20 @@ test('buildCalendar: 주말과 공휴일을 isOff로 표시한다', () => {
   assert.equal(workday.isOff, false);
 });
 
+test('buildCalendar: 회사 휴무일 병합 시 근무일이 쉬는 날이 된다', () => {
+  // Arrange: 기본 달력의 첫 근무일을 회사 휴무로 추가
+  const baseCal = buildCalendar(HOLIDAYS, RANGE_START, RANGE_END);
+  const workday = baseCal.find((d) => !d.isOff).iso;
+
+  // Act
+  const cal2 = buildCalendar({ ...HOLIDAYS, [workday]: '회사 휴무' }, RANGE_START, RANGE_END);
+  const day = new Map(cal2.map((d) => [d.iso, d])).get(workday);
+
+  // Assert
+  assert.equal(day.isOff, true);
+  assert.equal(day.holiday, '회사 휴무');
+});
+
 test('recommend: 정확히 요청한 연차 수만 사용한다', () => {
   for (const leaveCount of [1, 2, 3]) {
     const recs = recommend(calendar, leaveCount, 10);

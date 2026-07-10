@@ -453,7 +453,7 @@
     const friendDays = friendRanges.map(rangeLabel).join(', ');
     const bothHTML = both.length
       ? `<p class="friend-both">🎯 둘 다 쉬는 날: <b>${both.map((r) => `${rangeLabel(r)} (${daysCount(r.start, r.end)}일)`).join(', ')}</b></p>`
-      : `<p class="friend-both none">아직 겹치는 날이 없어요. 위에서 연휴를 담아 맞춰보세요!</p>`;
+      : `<p class="friend-both none">아직 함께 쉬는 날이 없어요. 위에서 연휴를 담아 맞춰보세요!</p>`;
     return `<div class="friend-box">
       <h3>👥 친구 연차와 맞추기</h3>
       <p class="friend-sub">친구가 쉬는 날: ${friendDays}</p>
@@ -514,7 +514,7 @@
 
     const warns = [];
     if (over) warns.push(`⚠️ 연차 ${used}개로 총 연차(${state.budget}개)를 넘었어요. 총 연차를 늘리거나 일부를 빼세요.`);
-    if (overlap) warns.push('⚠️ 담은 연휴 중 날짜가 겹치는 게 있어요.');
+    if (overlap) warns.push('⚠️ 담은 연휴 일정이 서로 겹쳐요. 하나를 빼는 게 좋아요.');
     const warnHTML = warns.length ? `<div class="plan-warn">${warns.map((w) => `<p>${w}</p>`).join('')}</div>` : '';
 
     const actions = `<div class="plan-actions">

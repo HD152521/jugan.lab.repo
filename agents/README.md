@@ -2,11 +2,13 @@
 
 @jugan.lab 릴스 제작 파이프라인 에이전트 5종. Claude Code 커스텀 에이전트 형식(.md + frontmatter).
 
+> **브랜드 원본 = JuganLab 노션 릴스 킷.** 마스코트=안경 오리(크루드 손드로잉, 필수 주연), 팔레트=딥그린+옐로우(민트 아님), 톤=개발자 반말·밈·자학. 목표는 앱 소개가 아니라 **알고리즘 도달** — 화면넘기기 대신 공감·페인 서사. 레퍼런스는 블로그가 아니라 실제 릴스 3~5개.
+
 ## 로스터
 
 | 에이전트 | 역할 | 모델 | 실행 순서 |
 |----------|------|------|-----------|
-| `reels-trend-scout` | 이번 주 릴스 트렌드 조사 → 트렌드리포트.md | sonnet | 1 |
+| `reels-trend-scout` | 사용자가 준 릴스 3~5개 분석 → 레퍼런스리포트.md (블로그·마케팅 글 금지) | sonnet | 1 |
 | `reels-strategist` | 알고리즘 타는 영상 기획 → 기획서.md | opus | 2 |
 | `reels-scriptwriter` | 초 단위 대본 + 캡션 → 대본.md | sonnet | 3 |
 | `reels-producer` | Playwright+TTS+ffmpeg로 mp4 제작 | sonnet | 4 |

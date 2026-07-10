@@ -7,15 +7,16 @@
   const VALID_LEAVE = [1, 2, 3, 4, 5];
   const VALID_YEAR = ['all', '2026', '2027'];
 
-  // 마지막 선택(연차/연도)을 localStorage에서 복원 — 없거나 손상 시 기본값
+  // 마지막 선택(연차/연도/명절제외)을 localStorage에서 복원 — 없거나 손상 시 기본값
   function loadState() {
-    const fallback = { leave: 2, year: 'all' };
+    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false };
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return fallback;
       return {
         leave: VALID_LEAVE.includes(saved.leave) ? saved.leave : fallback.leave,
         year: VALID_YEAR.includes(saved.year) ? saved.year : fallback.year,
+        excludeMyeongjeol: saved.excludeMyeongjeol === true,
       };
     } catch (_) {
       return fallback;
@@ -194,6 +195,7 @@
     currentStreaks = recommend(calendar, state.leave, 50)
       .filter(matchYear)
       .filter((s) => daysUntil(s.end) >= 0) // 이미 지나간 연휴 제외
+      .filter((s) => !state.excludeMyeongjeol || !isMyeongjeol(s)) // 설·추석 빼고
       .slice(0, RESULT_LIMIT);
 
     if (currentStreaks.length === 0) {
@@ -227,6 +229,16 @@
     });
   }
 
+  const mjBtn = document.getElementById('toggle-myeongjeol');
+  if (mjBtn) {
+    mjBtn.addEventListener('click', () => {
+      state.excludeMyeongjeol = !state.excludeMyeongjeol;
+      mjBtn.setAttribute('aria-pressed', String(state.excludeMyeongjeol));
+      saveState();
+      render();
+    });
+  }
+
   // 복원된 state를 버튼 aria-pressed에 반영 (HTML 기본값 덮어쓰기)
   function syncControls() {
     document
@@ -235,6 +247,7 @@
     document
       .querySelectorAll('.year-btn')
       .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === state.year)));
+    if (mjBtn) mjBtn.setAttribute('aria-pressed', String(state.excludeMyeongjeol));
   }
 
   bindPicker('.leave-btn', 'leave', (btn) => Number(btn.dataset.leave));

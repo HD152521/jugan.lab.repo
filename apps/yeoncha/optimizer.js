@@ -88,20 +88,52 @@ function findStreaks(days, maxLeave) {
   return results;
 }
 
+// 두 연휴 구간의 날짜가 겹치는지 (ISO 문자열 비교로 충분)
+function overlaps(a, b) {
+  return a.start <= b.end && b.start <= a.end;
+}
+
 /**
- * 선택한 연차 개수에 대한 추천 목록: 길이 내림차순, 같으면 빠른 날짜 우선.
+ * 설날·추석 연휴가 포함된 구간인지. 명절은 실제로 연차 쓰기 어려워 별도 취급.
+ * @param {Streak} streak
+ * @returns {boolean}
+ */
+function isMyeongjeol(streak) {
+  return streak.cells.some((c) => c.holiday && (c.holiday.includes('설날') || c.holiday.includes('추석')));
+}
+
+/**
+ * 선택한 연차 개수에 대한 추천 목록.
+ * 길이 내림차순(같으면 빠른 날짜)으로 정렬한 뒤, 날짜가 겹치는 구간은
+ * 가장 긴 것 하나만 남긴다 — 같은 명절의 미세 변형이 목록을 도배하는 것 방지.
  * @param {Day[]} days
  * @param {number} leaveCount  정확히 사용할 연차 수
  * @param {number} limit       반환 최대 개수
  * @returns {Streak[]}
  */
 function recommend(days, leaveCount, limit) {
-  return findStreaks(days, leaveCount)
+  const sorted = findStreaks(days, leaveCount)
     .filter((s) => s.leave === leaveCount)
-    .sort((a, b) => b.length - a.length || a.start.localeCompare(b.start))
-    .slice(0, limit);
+    .sort((a, b) => b.length - a.length || a.start.localeCompare(b.start));
+
+  const chosen = [];
+  for (const s of sorted) {
+    if (chosen.some((c) => overlaps(c, s))) continue; // 이미 뽑은 연휴와 겹치면 스킵
+    chosen.push(s);
+    if (chosen.length >= limit) break;
+  }
+  return chosen;
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { buildCalendar, findStreaks, recommend, toDate, toISO, MIN_STREAK_DAYS, MAX_WINDOW_DAYS };
+  module.exports = {
+    buildCalendar,
+    findStreaks,
+    recommend,
+    isMyeongjeol,
+    toDate,
+    toISO,
+    MIN_STREAK_DAYS,
+    MAX_WINDOW_DAYS,
+  };
 }

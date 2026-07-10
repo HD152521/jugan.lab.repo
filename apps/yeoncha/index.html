@@ -147,6 +147,11 @@ body {
 
 .year-btn[aria-pressed='true'] { background: var(--gold-soft); color: var(--gold-deep); }
 
+.year-btn.toggle { border: 1.5px solid oklch(24% 0.02 60 / 0.15); }
+.year-btn.toggle::before { content: '✕ '; font-weight: 800; }
+.year-btn.toggle[aria-pressed='true'] { border-color: var(--gold-deep); background: var(--gold-soft); color: var(--gold-deep); }
+.year-btn.toggle[aria-pressed='true']::before { content: '✓ '; }
+
 /* ---------- summary line ---------- */
 .summary {
   margin: 1.5rem 0 1rem;
@@ -312,6 +317,12 @@ footer {
           <button class="year-btn" data-year="all" aria-pressed="true">전체</button>
           <button class="year-btn" data-year="2026" aria-pressed="false">2026 남은 기간</button>
           <button class="year-btn" data-year="2027" aria-pressed="false">2027</button>
+        </div>
+      </div>
+      <div>
+        <p class="control-label" id="option-label">옵션</p>
+        <div class="year-picker" role="group" aria-labelledby="option-label">
+          <button class="year-btn toggle" id="toggle-myeongjeol" aria-pressed="false">설·추석 빼고</button>
         </div>
       </div>
     </section>

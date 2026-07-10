@@ -93,6 +93,29 @@ function overlaps(a, b) {
   return a.start <= b.end && b.start <= a.end;
 }
 
+// start~end(포함)의 모든 날짜 ISO 배열
+function expandDays(startISO, endISO) {
+  const out = [];
+  const end = toDate(endISO);
+  for (let d = toDate(startISO); d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    out.push(toISO(d));
+  }
+  return out;
+}
+
+// 연속된 ISO 날짜 집합을 [start,end] 구간들로 묶는다 (친구와 겹치는 날 표시용)
+function groupConsecutive(isoList) {
+  const sorted = [...new Set(isoList)].sort();
+  const ranges = [];
+  for (const iso of sorted) {
+    const last = ranges[ranges.length - 1];
+    const prevOfIso = toISO(new Date(toDate(iso).getFullYear(), toDate(iso).getMonth(), toDate(iso).getDate() - 1));
+    if (last && last.end === prevOfIso) last.end = iso;
+    else ranges.push({ start: iso, end: iso });
+  }
+  return ranges;
+}
+
 /**
  * 설날·추석 연휴가 포함된 구간인지. 명절은 실제로 연차 쓰기 어려워 별도 취급.
  * @param {Streak} streak
@@ -200,6 +223,8 @@ if (typeof module !== 'undefined') {
     recommend,
     isMyeongjeol,
     planLeaves,
+    expandDays,
+    groupConsecutive,
     toDate,
     toISO,
     MIN_STREAK_DAYS,

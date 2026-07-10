@@ -335,6 +335,35 @@ body {
 }
 .impact-num b { font-size: 1.35em; color: var(--gold-deep); }
 
+#controls-common { display: flex; flex-direction: column; gap: 1rem; }
+
+/* 내 플랜에 담기 토글 */
+.plan-toggle.on { background: var(--ink); border-color: var(--ink); color: oklch(98% 0.02 90); }
+
+/* 플랜 진행 바 */
+.plan-bar { height: 12px; border-radius: 999px; background: oklch(90% 0.02 90); overflow: hidden; margin-top: 0.3rem; }
+.plan-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); transition: width 220ms ease; }
+.plan-bar-cap { font-size: 0.8rem; color: var(--ink-soft); margin: 0.45rem 0 0.9rem; font-weight: 600; }
+
+.plan-warn { background: var(--accent-soft); border-radius: 12px; padding: 0.7rem 0.9rem; margin-bottom: 0.9rem; }
+.plan-warn p { font-size: 0.82rem; color: var(--accent); line-height: 1.5; }
+
+.plan-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+/* 친구 맞추기 박스 */
+.friend-box {
+  background: oklch(96% 0.03 250 / 0.5);
+  border: 1px solid oklch(70% 0.1 250 / 0.4);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+}
+.friend-box h3 { font-size: 0.95rem; font-weight: 800; margin-bottom: 0.5rem; }
+.friend-sub { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 0.4rem; }
+.friend-both { font-size: 0.9rem; font-weight: 700; line-height: 1.5; }
+.friend-both b { color: oklch(45% 0.15 250); }
+.friend-both.none { font-weight: 500; color: var(--ink-soft); }
+
 .card-top { display: flex; align-items: flex-end; gap: 0.9rem; margin-bottom: 0.35rem; }
 
 .card-days {
@@ -448,7 +477,8 @@ footer {
 
     <div class="mode-switch" role="group" aria-label="모드 선택">
       <button class="mode-btn" data-mode="find" aria-pressed="true">연휴 찾기</button>
-      <button class="mode-btn" data-mode="plan" aria-pressed="false">🗓️ 연차 플래너</button>
+      <button class="mode-btn" data-mode="plan" aria-pressed="false">🗓️ 플래너</button>
+      <button class="mode-btn" data-mode="myplan" aria-pressed="false">📋 내 플랜 <span id="plan-tab-count"></span></button>
     </div>
 
     <section class="controls" aria-label="검색 조건">
@@ -461,25 +491,27 @@ footer {
         </div>
       </div>
       <div id="controls-plan" hidden>
-        <p class="control-label" id="budget-label">남은 연차 — 최고 효율로 배분</p>
+        <p class="control-label" id="budget-label">내 총 연차 (개)</p>
         <div class="budget-row">
           <input id="budget-input" class="budget-input" type="number" min="1" max="40" step="1"
             inputmode="numeric" value="15" aria-labelledby="budget-label" />
           <span class="budget-unit">개</span>
         </div>
       </div>
-      <div>
-        <p class="control-label" id="year-label">기간</p>
-        <div class="year-picker" role="group" aria-labelledby="year-label">
-          <button class="year-btn" data-year="all" aria-pressed="true">전체</button>
-          <button class="year-btn" data-year="2026" aria-pressed="false">2026 남은 기간</button>
-          <button class="year-btn" data-year="2027" aria-pressed="false">2027</button>
+      <div id="controls-common">
+        <div>
+          <p class="control-label" id="year-label">기간</p>
+          <div class="year-picker" role="group" aria-labelledby="year-label">
+            <button class="year-btn" data-year="all" aria-pressed="true">전체</button>
+            <button class="year-btn" data-year="2026" aria-pressed="false">2026 남은 기간</button>
+            <button class="year-btn" data-year="2027" aria-pressed="false">2027</button>
+          </div>
         </div>
-      </div>
-      <div>
-        <p class="control-label" id="option-label">옵션</p>
-        <div class="year-picker" role="group" aria-labelledby="option-label">
-          <button class="toggle-btn" id="toggle-myeongjeol" aria-pressed="false">설·추석 빼고</button>
+        <div>
+          <p class="control-label" id="option-label">옵션</p>
+          <div class="year-picker" role="group" aria-labelledby="option-label">
+            <button class="toggle-btn" id="toggle-myeongjeol" aria-pressed="false">설·추석 빼고</button>
+          </div>
         </div>
       </div>
     </section>

@@ -4,7 +4,16 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { HOLIDAYS, RANGE_START, RANGE_END } = require('./holidays.js');
-const { buildCalendar, findStreaks, recommend, isMyeongjeol, planLeaves, MIN_STREAK_DAYS } = require('./optimizer.js');
+const {
+  buildCalendar,
+  findStreaks,
+  recommend,
+  isMyeongjeol,
+  planLeaves,
+  expandDays,
+  groupConsecutive,
+  MIN_STREAK_DAYS,
+} = require('./optimizer.js');
 
 const calendar = buildCalendar(HOLIDAYS, RANGE_START, RANGE_END);
 const byIso = new Map(calendar.map((d) => [d.iso, d]));
@@ -197,6 +206,27 @@ test('planLeaves: 설·추석 빼면 명절 브리지가 사라진다', () => {
   const noM = planLeaves(calendar, 40, { afterISO: RANGE_START, excludeMyeongjeol: true });
   assert.ok(withM.plan.some(isMyeongjeol), '기본엔 명절 브리지가 있어야 한다');
   assert.equal(noM.plan.some(isMyeongjeol), false, '제외 시 명절 브리지가 없어야 한다');
+});
+
+test('expandDays: 구간 날짜를 빠짐없이 펼친다 (월 경계 포함)', () => {
+  assert.deepEqual(expandDays('2026-08-30', '2026-09-02'), ['2026-08-30', '2026-08-31', '2026-09-01', '2026-09-02']);
+  assert.deepEqual(expandDays('2026-08-15', '2026-08-15'), ['2026-08-15']);
+});
+
+test('groupConsecutive: 연속 날짜를 구간으로 묶고 끊긴 곳은 나눈다', () => {
+  const ranges = groupConsecutive(['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-20', '2026-08-21']);
+  assert.deepEqual(ranges, [
+    { start: '2026-08-15', end: '2026-08-17' },
+    { start: '2026-08-20', end: '2026-08-21' },
+  ]);
+});
+
+test('친구 맞추기 로직: 두 사람 쉬는 날 교집합', () => {
+  // 내가 쉬는 날: 8/14~8/17, 친구: 8/16~8/19  → 둘 다 8/16~8/17
+  const mine = new Set(expandDays('2026-08-14', '2026-08-17'));
+  const friend = expandDays('2026-08-16', '2026-08-19');
+  const both = groupConsecutive(friend.filter((d) => mine.has(d)));
+  assert.deepEqual(both, [{ start: '2026-08-16', end: '2026-08-17' }]);
 });
 
 test('findStreaks: 극대성 — 시작 앞날이 쉬는 날인 구간은 만들지 않는다', () => {

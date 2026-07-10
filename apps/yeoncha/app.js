@@ -8,7 +8,7 @@
   const LEAVE_MIN = 1;
   const LEAVE_MAX = 15;
 
-  const VALID_MODE = ['find', 'plan'];
+  const VALID_MODE = ['find', 'plan', 'myplan'];
   const BUDGET_MIN = 1;
   const BUDGET_MAX = 40;
 
@@ -55,9 +55,31 @@
     return out;
   }
 
+  // 내 플랜에 담은 연휴 정제 — 필수 필드 갖춘 스냅샷만
+  function sanitizePlan(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const b of list) {
+      if (!b || !ISO_RE.test(b.start) || !ISO_RE.test(b.end)) continue;
+      if (!Array.isArray(b.leaveDays) || !b.leaveDays.every((d) => ISO_RE.test(d))) continue;
+      const key = b.leaveDays.join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        start: b.start,
+        end: b.end,
+        length: Number(b.length) || 0,
+        leave: Number(b.leave) || b.leaveDays.length,
+        leaveDays: b.leaveDays.slice(),
+      });
+    }
+    return out;
+  }
+
   // 마지막 선택을 localStorage에서 복원 — 없거나 손상 시 기본값
   function loadState() {
-    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false, mode: 'find', budget: 15, customHolidays: [] };
+    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false, mode: 'find', budget: 15, customHolidays: [], plan: [] };
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return fallback;
@@ -68,6 +90,7 @@
         mode: VALID_MODE.includes(saved.mode) ? saved.mode : fallback.mode,
         budget: Number.isFinite(saved.budget) ? clampBudget(saved.budget) : fallback.budget,
         customHolidays: sanitizeCustom(saved.customHolidays),
+        plan: sanitizePlan(saved.plan),
       };
     } catch (_) {
       return fallback;
@@ -93,6 +116,77 @@
   }
   rebuildCalendar();
   const TODAY_ISO = toISO(new Date());
+
+  // ---------- 내 플랜 (담은 연휴 관리) ----------
+  const planKey = (b) => b.leaveDays.join('|');
+  const inPlan = (b) => state.plan.some((p) => planKey(p) === planKey(b));
+  const daysCount = (a, b) => expandDays(a, b).length;
+
+  function togglePlan(b) {
+    const k = planKey(b);
+    if (state.plan.some((p) => planKey(p) === k)) {
+      state.plan = state.plan.filter((p) => planKey(p) !== k);
+    } else {
+      state.plan = [
+        ...state.plan,
+        { start: b.start, end: b.end, length: b.length, leave: b.leave, leaveDays: b.leaveDays.slice() },
+      ];
+    }
+    saveState();
+  }
+
+  function planStats() {
+    const sorted = [...state.plan].sort((a, b) => a.start.localeCompare(b.start));
+    const leaveSet = new Set();
+    const offSet = new Set();
+    for (const b of sorted) {
+      b.leaveDays.forEach((d) => leaveSet.add(d));
+      expandDays(b.start, b.end).forEach((d) => offSet.add(d));
+    }
+    let overlap = false;
+    for (let i = 1; i < sorted.length; i++) if (sorted[i - 1].end >= sorted[i].start) overlap = true;
+    const used = leaveSet.size;
+    return { sorted, used, rest: offSet.size, offSet, overlap, over: used > state.budget, leftover: Math.max(0, state.budget - used) };
+  }
+
+  // ---------- 친구와 연차 맞추기 (URL 공유) ----------
+  function parseFriendPlan() {
+    const search = typeof location !== 'undefined' ? location.search || '' : '';
+    const m = /[?&]plan=([^&]+)/.exec(search);
+    if (!m) return null;
+    const ranges = [];
+    for (const seg of decodeURIComponent(m[1]).split('.')) {
+      const mm = /^(\d{8})-(\d{8})$/.exec(seg);
+      if (!mm) continue;
+      const iso = (s) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+      const start = iso(mm[1]);
+      const end = iso(mm[2]);
+      if (start <= end) ranges.push({ start, end });
+    }
+    return ranges.length ? ranges : null;
+  }
+  const friendRanges = parseFriendPlan();
+  if (friendRanges) state.mode = 'myplan'; // 친구 링크로 들어오면 바로 맞추기 화면
+
+  function myPlanParam() {
+    return [...state.plan]
+      .sort((a, b) => a.start.localeCompare(b.start))
+      .map((b) => `${b.start.replaceAll('-', '')}-${b.end.replaceAll('-', '')}`)
+      .join('.');
+  }
+
+  function planShareUrl() {
+    const base = typeof location !== 'undefined' ? location.origin + location.pathname : 'https://yeoncha.juganlab.com/';
+    return `${base}?plan=${myPlanParam()}`;
+  }
+
+  function bothOffRanges() {
+    if (!friendRanges) return [];
+    const friendOff = new Set();
+    friendRanges.forEach((r) => expandDays(r.start, r.end).forEach((d) => friendOff.add(d)));
+    const both = [...planStats().offSet].filter((d) => friendOff.has(d));
+    return groupConsecutive(both);
+  }
 
   const $ = (sel) => document.querySelector(sel);
   const resultsEl = $('#results');
@@ -200,11 +294,11 @@
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
 
-  function downloadICS(s) {
+  function downloadICS(s, filename) {
     const blob = new Blob([icsFor(s)], { type: 'text/calendar' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `연차_${s.start}_${s.length}일연휴.ics`;
+    a.download = filename || `연차_${s.start}_${s.length}일연휴.ics`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -327,9 +421,10 @@
         </div>
         <p class="card-leave-note">연차 쓰는 날 → <b>${fmtLeaveDays(s.leaveDays)}</b></p>
         <div class="card-actions">
+          <button class="copy-btn plan-toggle${inPlan(s) ? ' on' : ''}" data-action="plan" data-idx="${idx}">${inPlan(s) ? '✓ 담김' : '➕ 담기'}</button>
           <button class="copy-btn" data-action="img" data-idx="${idx}">🖼️ 이미지</button>
-          <button class="copy-btn" data-action="share" data-idx="${idx}">공유하기</button>
-          <a class="copy-btn" href="${googleCalUrl(s)}" target="_blank" rel="noopener">🗓️ 구글 캘린더</a>
+          <button class="copy-btn" data-action="share" data-idx="${idx}">공유</button>
+          <a class="copy-btn" href="${googleCalUrl(s)}" target="_blank" rel="noopener">🗓️ 구글</a>
           <button class="copy-btn" data-action="ics" data-idx="${idx}">📅 .ics</button>
         </div>
       </article>`;
@@ -338,7 +433,112 @@
   let currentStreaks = [];
 
   function render() {
-    return state.mode === 'plan' ? renderPlan() : renderFind();
+    updatePlanTab();
+    if (state.mode === 'plan') return renderPlan();
+    if (state.mode === 'myplan') return renderMyPlan();
+    return renderFind();
+  }
+
+  function updatePlanTab() {
+    const el = document.getElementById('plan-tab-count');
+    if (el) el.textContent = state.plan.length ? `(${state.plan.length})` : '';
+  }
+
+  function rangeLabel(r) {
+    return `${fmtDate(r.start, false)}~${fmtDate(r.end, false)}`;
+  }
+
+  function renderFriendBox() {
+    const both = bothOffRanges();
+    const friendDays = friendRanges.map(rangeLabel).join(', ');
+    const bothHTML = both.length
+      ? `<p class="friend-both">🎯 둘 다 쉬는 날: <b>${both.map((r) => `${rangeLabel(r)} (${daysCount(r.start, r.end)}일)`).join(', ')}</b></p>`
+      : `<p class="friend-both none">아직 겹치는 날이 없어요. 위에서 연휴를 담아 맞춰보세요!</p>`;
+    return `<div class="friend-box">
+      <h3>👥 친구 연차와 맞추기</h3>
+      <p class="friend-sub">친구가 쉬는 날: ${friendDays}</p>
+      ${bothHTML}
+    </div>`;
+  }
+
+  function downloadPlanICS() {
+    const all = new Set();
+    state.plan.forEach((b) => b.leaveDays.forEach((d) => all.add(d)));
+    const st = planStats();
+    const pseudo = {
+      leave: all.size,
+      length: st.rest,
+      start: st.sorted[0].start,
+      end: st.sorted[st.sorted.length - 1].end,
+      leaveDays: [...all].sort(),
+    };
+    downloadICS(pseudo, '연차술사_내플랜.ics');
+  }
+
+  async function sharePlan(btn) {
+    const url = planShareUrl();
+    const text = `내 올해 연차 플랜 봐줘! 우리 둘 다 쉬는 날 맞춰보자 🏖️`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url });
+        return;
+      } catch (_) { /* 취소/미지원 → 복사 */ }
+    }
+    const ok = await copyText(url);
+    const o = btn.textContent;
+    btn.textContent = ok ? '링크 복사됨! 친구에게 붙여넣기' : '복사 실패';
+    if (!ok) window.prompt('이 링크를 친구에게 보내세요', url);
+    setTimeout(() => (btn.textContent = o), 2200);
+  }
+
+  // "내 플랜" — 담은 연휴 관리 + 친구 맞추기
+  function renderMyPlan() {
+    const { sorted, used, rest, overlap, over, leftover } = planStats();
+    const friendHTML = friendRanges ? renderFriendBox() : '';
+
+    if (sorted.length === 0) {
+      summaryEl.textContent = '';
+      resultsEl.innerHTML =
+        friendHTML +
+        `<p class="empty">아직 담은 연휴가 없어요.<br />‘연휴 찾기’나 ‘연차 플래너’에서 마음에 드는 연휴의 <b>➕ 담기</b>를 눌러 내 계획을 만들어보세요.</p>`;
+      return;
+    }
+
+    summaryEl.innerHTML =
+      `내 플랜 · 연차 <strong>${used}개</strong> 사용 · 확보 <strong>${rest}일</strong>` +
+      (leftover > 0 ? ` · 남은 <strong>${leftover}개</strong>` : '');
+
+    const pct = Math.min(100, Math.round((used / Math.max(1, state.budget)) * 100));
+    const bar = `<div class="plan-bar"><div class="plan-bar-fill" style="width:${pct}%"></div></div>
+      <p class="plan-bar-cap">연차 ${used} / ${state.budget}개 · 확보 ${rest}일</p>`;
+
+    const warns = [];
+    if (over) warns.push(`⚠️ 연차 ${used}개로 총 연차(${state.budget}개)를 넘었어요. 총 연차를 늘리거나 일부를 빼세요.`);
+    if (overlap) warns.push('⚠️ 담은 연휴 중 날짜가 겹치는 게 있어요.');
+    const warnHTML = warns.length ? `<div class="plan-warn">${warns.map((w) => `<p>${w}</p>`).join('')}</div>` : '';
+
+    const actions = `<div class="plan-actions">
+      <button class="copy-btn" id="plan-ics">📅 전체 캘린더 등록</button>
+      <button class="copy-btn" id="plan-share">🔗 플랜 공유(친구 맞추기)</button>
+    </div>`;
+
+    // 저장된 스냅샷을 현재 달력으로 하이드레이트 (efficiency/cells 복원)
+    const calByIso = new Map(calendar.map((d) => [d.iso, d]));
+    const hydrate = (b) => ({
+      ...b,
+      efficiency: b.length / b.leave,
+      cells: expandDays(b.start, b.end).map(
+        (iso) => calByIso.get(iso) || { iso, dow: toDate(iso).getDay(), holiday: null, isOff: true }
+      ),
+    });
+    currentStreaks = sorted.map(hydrate); // 카드 버튼(담기/공유/캘린더) 재사용
+    const cards = currentStreaks.map((s, i) => cardHTML(s, i, false)).join('');
+    resultsEl.innerHTML = bar + warnHTML + friendHTML + actions + cards;
+
+    const icsBtn = document.getElementById('plan-ics');
+    if (icsBtn) icsBtn.addEventListener('click', downloadPlanICS);
+    const shareBtn = document.getElementById('plan-share');
+    if (shareBtn) shareBtn.addEventListener('click', () => sharePlan(shareBtn));
   }
 
   // "연휴 찾기" — 연차 개수 하나로 만들 수 있는 연휴 목록
@@ -402,7 +602,10 @@
     if (!s) return;
     if (btn.dataset.action === 'share') shareStreak(s, btn);
     else if (btn.dataset.action === 'img') shareImage(s);
-    else downloadICS(s);
+    else if (btn.dataset.action === 'plan') {
+      togglePlan(s);
+      render();
+    } else downloadICS(s);
   });
 
   function bindPicker(selector, key, valueOf) {
@@ -428,13 +631,15 @@
 
   // 모드에 따라 연차 개수 선택(찾기) / 남은 연차 입력(플래너) 전환
   function applyMode() {
-    const findEl = document.getElementById('controls-find');
-    const planEl = document.getElementById('controls-plan');
-    if (findEl) findEl.hidden = state.mode !== 'find';
-    if (planEl) planEl.hidden = state.mode !== 'plan';
-    document
-      .querySelectorAll('.mode-btn')
-      .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+    const m = state.mode;
+    const setHidden = (id, hide) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = hide;
+    };
+    setHidden('controls-find', m !== 'find');
+    setHidden('controls-plan', !(m === 'plan' || m === 'myplan'));
+    setHidden('controls-common', m === 'myplan'); // 연도/명절 필터는 찾기·플래너만
+    document.querySelectorAll('.mode-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
   }
 
   document.querySelectorAll('.mode-btn').forEach((btn) => {

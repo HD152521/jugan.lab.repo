@@ -15,7 +15,10 @@
 
 ## 주차 인덱스
 
-- [w01-yeoncha](./weeks/w01-yeoncha/) — 연차술사 (앱: [`apps/yeoncha`](./apps/yeoncha/))
+- [w01-yeoncha](./weeks/w01-yeoncha/) — 연차술사 ✅ 배포 (앱: [`apps/yeoncha`](./apps/yeoncha/))
+- [w02-chukui](./weeks/w02-chukui/) — 축의금 계산기 (계획) · 리텐션=경조사 장부
+- [w03-chamgi](./weeks/w03-chamgi/) — 참은 지 N일 (계획) · 바이럴=공유 카운터
+- [w04-baedalbi](./weeks/w04-baedalbi/) — 이번 달 배달비 계산기 (계획) · 바이럴=치킨 환산
 - [w01-example](./weeks/w01-example/) — (템플릿)
 
 ## Git 사용법

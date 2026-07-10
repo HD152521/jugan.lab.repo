@@ -106,18 +106,26 @@ function isMyeongjeol(streak) {
  * 선택한 연차 개수에 대한 추천 목록.
  * 길이 내림차순(같으면 빠른 날짜)으로 정렬한 뒤, 날짜가 겹치는 구간은
  * 가장 긴 것 하나만 남긴다 — 같은 명절의 미세 변형이 목록을 도배하는 것 방지.
+ *
+ * excludeMyeongjeol은 중복제거(dedup) 이전에 적용한다. 그렇지 않으면 명절 구간이
+ * 대표로 뽑혀 겹치는 비(非)명절 대안을 삼킨 뒤 사후 제거돼, 그 시기 연휴가
+ * 대안 없이 통째로 사라진다.
  * @param {Day[]} days
  * @param {number} leaveCount  정확히 사용할 연차 수
  * @param {number} limit       반환 최대 개수
+ * @param {Object} [opts]
+ * @param {boolean} [opts.excludeMyeongjeol=false]  설·추석 제외
  * @returns {Streak[]}
  */
-function recommend(days, leaveCount, limit) {
-  const sorted = findStreaks(days, leaveCount)
-    .filter((s) => s.leave === leaveCount)
-    .sort((a, b) => b.length - a.length || a.start.localeCompare(b.start));
+function recommend(days, leaveCount, limit, opts = {}) {
+  const { excludeMyeongjeol = false } = opts;
+
+  let cands = findStreaks(days, leaveCount).filter((s) => s.leave === leaveCount);
+  if (excludeMyeongjeol) cands = cands.filter((s) => !isMyeongjeol(s)); // dedup 전에 거른다
+  cands.sort((a, b) => b.length - a.length || a.start.localeCompare(b.start));
 
   const chosen = [];
-  for (const s of sorted) {
+  for (const s of cands) {
     if (chosen.some((c) => overlaps(c, s))) continue; // 이미 뽑은 연휴와 겹치면 스킵
     chosen.push(s);
     if (chosen.length >= limit) break;

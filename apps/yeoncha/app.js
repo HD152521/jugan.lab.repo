@@ -147,19 +147,20 @@
     return Math.round((toDate(iso) - today) / 86400000);
   }
 
+  function nextDayISO(iso) {
+    const d = toDate(iso);
+    return toISO(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
+  }
+
   function icsFor(s) {
     const stamp = (iso) => iso.replaceAll('-', '');
-    const nextDay = (iso) => {
-      const d = toDate(iso);
-      return toISO(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
-    };
     const events = s.leaveDays
       .map((iso) =>
         [
           'BEGIN:VEVENT',
           `UID:yeonchasulsa-${stamp(iso)}@weekly.ship`,
           `DTSTART;VALUE=DATE:${stamp(iso)}`,
-          `DTEND;VALUE=DATE:${stamp(nextDay(iso))}`,
+          `DTEND;VALUE=DATE:${stamp(nextDayISO(iso))}`,
           'SUMMARY:연차 🏖️',
           `DESCRIPTION:연차 ${s.leave}개로 ${s.length}일 연휴 (${s.start} ~ ${s.end}) — 연차술사`,
           'END:VEVENT',
@@ -173,14 +174,10 @@
   // 구글 TEMPLATE URL은 이벤트 1개만 담을 수 있어 연차일별 대신 연휴 블록으로 등록.
   function googleCalUrl(s) {
     const stamp = (iso) => iso.replaceAll('-', '');
-    const nextDay = (iso) => {
-      const d = toDate(iso);
-      return toISO(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
-    };
     const params = new URLSearchParams({
       action: 'TEMPLATE',
       text: `🏖️ ${s.length}일 연휴 (연차 ${s.leave}개)`,
-      dates: `${stamp(s.start)}/${stamp(nextDay(s.end))}`, // 하루종일: 종료일은 배타적 → +1일
+      dates: `${stamp(s.start)}/${stamp(nextDayISO(s.end))}`, // 하루종일: 종료일은 배타적 → +1일
       details: `연차 쓰는 날: ${fmtLeaveDays(s.leaveDays)}\n— 연차술사`,
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -239,10 +236,10 @@
 
   // "연휴 찾기" — 연차 개수 하나로 만들 수 있는 연휴 목록
   function renderFind() {
-    currentStreaks = recommend(calendar, state.leave, 50)
+    // 명절 제외는 recommend 내부(dedup 이전)에서 처리 — 대안 연휴가 사라지지 않게
+    currentStreaks = recommend(calendar, state.leave, 500, { excludeMyeongjeol: state.excludeMyeongjeol })
       .filter(matchYear)
       .filter((s) => daysUntil(s.end) >= 0) // 이미 지나간 연휴 제외
-      .filter((s) => !state.excludeMyeongjeol || !isMyeongjeol(s)) // 설·추석 빼고
       .slice(0, RESULT_LIMIT);
 
     if (currentStreaks.length === 0) {

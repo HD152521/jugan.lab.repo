@@ -87,13 +87,78 @@ body {
   line-height: 1.6;
 }
 
+/* ---------- mode switch ---------- */
+[hidden] { display: none !important; }
+
+.mode-switch {
+  margin-top: 2rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.7rem 0;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: 1.5px solid oklch(24% 0.02 60 / 0.12);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.mode-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.mode-btn[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: oklch(98% 0.02 90);
+}
+
 /* ---------- controls ---------- */
 .controls {
-  margin: 2rem 0 1rem;
+  margin: 1rem 0 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
+
+.budget-row { display: flex; align-items: baseline; gap: 0.5rem; }
+
+.budget-input {
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  width: 5.5rem;
+  padding: 0.4rem 0.8rem;
+  border: 1.5px solid oklch(24% 0.02 60 / 0.15);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.budget-input:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+
+.budget-unit { font-size: 1rem; font-weight: 700; color: var(--ink-soft); }
+
+.card.leftover {
+  border: 1.5px dashed oklch(66% 0.13 75 / 0.55);
+  box-shadow: none;
+  background: oklch(97% 0.03 90 / 0.4);
+}
+
+.card.leftover .leftover-big {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.4rem;
+}
+
+.card.leftover p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.6; }
 
 .control-label {
   font-size: 0.8rem;
@@ -147,10 +212,21 @@ body {
 
 .year-btn[aria-pressed='true'] { background: var(--gold-soft); color: var(--gold-deep); }
 
-.year-btn.toggle { border: 1.5px solid oklch(24% 0.02 60 / 0.15); }
-.year-btn.toggle::before { content: '✕ '; font-weight: 800; }
-.year-btn.toggle[aria-pressed='true'] { border-color: var(--gold-deep); background: var(--gold-soft); color: var(--gold-deep); }
-.year-btn.toggle[aria-pressed='true']::before { content: '✓ '; }
+.toggle-btn {
+  padding: 0.4rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1.5px solid oklch(24% 0.02 60 / 0.15);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.toggle-btn::before { content: '✕ '; font-weight: 800; }
+.toggle-btn:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+.toggle-btn[aria-pressed='true'] { border-color: var(--gold-deep); background: var(--gold-soft); color: var(--gold-deep); }
+.toggle-btn[aria-pressed='true']::before { content: '✓ '; }
 
 /* ---------- summary line ---------- */
 .summary {
@@ -300,8 +376,13 @@ footer {
       <p>2026 하반기~2027 공휴일·대체공휴일에 연차를 붙여서<br />가장 긴 연휴를 만들어드립니다.</p>
     </section>
 
+    <div class="mode-switch" role="group" aria-label="모드 선택">
+      <button class="mode-btn" data-mode="find" aria-pressed="true">연휴 찾기</button>
+      <button class="mode-btn" data-mode="plan" aria-pressed="false">🗓️ 연차 플래너</button>
+    </div>
+
     <section class="controls" aria-label="검색 조건">
-      <div>
+      <div id="controls-find">
         <p class="control-label" id="leave-label">쓸 수 있는 연차</p>
         <div class="leave-picker" role="group" aria-labelledby="leave-label">
           <button class="leave-btn" data-leave="1" aria-pressed="false">1개</button>
@@ -309,6 +390,14 @@ footer {
           <button class="leave-btn" data-leave="3" aria-pressed="false">3개</button>
           <button class="leave-btn" data-leave="4" aria-pressed="false">4개</button>
           <button class="leave-btn" data-leave="5" aria-pressed="false">5개</button>
+        </div>
+      </div>
+      <div id="controls-plan" hidden>
+        <p class="control-label" id="budget-label">남은 연차 (총 몇 개 쓸 수 있나요)</p>
+        <div class="budget-row">
+          <input id="budget-input" class="budget-input" type="number" min="1" max="40" step="1"
+            inputmode="numeric" value="15" aria-labelledby="budget-label" />
+          <span class="budget-unit">개</span>
         </div>
       </div>
       <div>
@@ -322,7 +411,7 @@ footer {
       <div>
         <p class="control-label" id="option-label">옵션</p>
         <div class="year-picker" role="group" aria-labelledby="option-label">
-          <button class="year-btn toggle" id="toggle-myeongjeol" aria-pressed="false">설·추석 빼고</button>
+          <button class="toggle-btn" id="toggle-myeongjeol" aria-pressed="false">설·추석 빼고</button>
         </div>
       </div>
     </section>

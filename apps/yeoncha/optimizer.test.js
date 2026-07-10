@@ -4,7 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { HOLIDAYS, RANGE_START, RANGE_END } = require('./holidays.js');
-const { buildCalendar, findStreaks, recommend, isMyeongjeol, MIN_STREAK_DAYS } = require('./optimizer.js');
+const { buildCalendar, findStreaks, recommend, isMyeongjeol, planLeaves, MIN_STREAK_DAYS } = require('./optimizer.js');
 
 const calendar = buildCalendar(HOLIDAYS, RANGE_START, RANGE_END);
 const byIso = new Map(calendar.map((d) => [d.iso, d]));
@@ -119,6 +119,53 @@ test('isMyeongjeol: 추석·설날 구간만 true', () => {
   if (hangeul && !hangeul.cells.some((c) => c.holiday && /설날|추석/.test(c.holiday))) {
     assert.equal(isMyeongjeol(hangeul), false);
   }
+});
+
+test('planLeaves: 예산을 넘지 않고 leftover = 예산 - 사용', () => {
+  for (const budget of [3, 10, 20, 40]) {
+    const r = planLeaves(calendar, budget, { afterISO: RANGE_START });
+    assert.ok(r.used <= budget, `사용(${r.used})이 예산(${budget})을 넘음`);
+    assert.equal(r.leftover, budget - r.used);
+    assert.equal(r.bridges, r.plan.length);
+  }
+});
+
+test('planLeaves: 모든 브리지는 공휴일에 붙고, 효율 하한 이상, 시간순 정렬', () => {
+  const r = planLeaves(calendar, 20, { afterISO: RANGE_START });
+  assert.ok(r.plan.length > 0);
+  for (const s of r.plan) {
+    assert.ok(s.cells.some((c) => c.holiday), '공휴일에 붙어야 한다');
+    assert.ok(s.efficiency >= 2, '효율 하한(2) 이상이어야 한다');
+  }
+  for (let i = 1; i < r.plan.length; i++) {
+    assert.ok(r.plan[i - 1].start <= r.plan[i].start, '시간순이어야 한다');
+  }
+});
+
+test('planLeaves: 선택된 브리지끼리 날짜가 겹치지 않는다', () => {
+  const r = planLeaves(calendar, 40, { afterISO: RANGE_START });
+  for (let i = 0; i < r.plan.length; i++) {
+    for (let j = i + 1; j < r.plan.length; j++) {
+      const a = r.plan[i];
+      const b = r.plan[j];
+      assert.equal(a.start <= b.end && b.start <= a.end, false);
+    }
+  }
+});
+
+test('planLeaves: 예산이 남아돌아도 붙일 자리 이상은 안 쓴다 (억지 배정 없음)', () => {
+  const big = planLeaves(calendar, 40, { afterISO: RANGE_START });
+  const huge = planLeaves(calendar, 40 + 20, { afterISO: RANGE_START });
+  // 붙일 수 있는 브리지가 한정 → 예산 키워도 사용량 동일, 나머지는 leftover
+  assert.equal(huge.used, big.used);
+  assert.ok(huge.leftover > big.leftover);
+});
+
+test('planLeaves: 설·추석 빼면 명절 브리지가 사라진다', () => {
+  const withM = planLeaves(calendar, 40, { afterISO: RANGE_START });
+  const noM = planLeaves(calendar, 40, { afterISO: RANGE_START, excludeMyeongjeol: true });
+  assert.ok(withM.plan.some(isMyeongjeol), '기본엔 명절 브리지가 있어야 한다');
+  assert.equal(noM.plan.some(isMyeongjeol), false, '제외 시 명절 브리지가 없어야 한다');
 });
 
 test('findStreaks: 극대성 — 시작 앞날이 쉬는 날인 구간은 만들지 않는다', () => {

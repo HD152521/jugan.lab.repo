@@ -125,12 +125,73 @@ function recommend(days, leaveCount, limit) {
   return chosen;
 }
 
+/**
+ * @typedef {Object} LeavePlan
+ * @property {Streak[]} plan     시간순으로 정렬된, 연차를 쓸 효율 브리지들
+ * @property {number} used       실제 사용한 연차 수
+ * @property {number} leftover   남는 연차 수 (자유롭게 써도 되는 양)
+ * @property {number} totalRest  브리지로 확보한 총 휴일 수
+ * @property {number} bridges    선택된 브리지 개수
+ */
+
+/**
+ * 남은 연차 예산을 "공휴일에 붙는 효율 높은 브리지"에만 배분하는 연간 플랜.
+ * 예: 수·금이 공휴일이면 목요일 1개로 긴 연휴 — 이런 자리만 추천한다.
+ * 붙일 만한 자리가 예산보다 적으면 남은 연차는 leftover(자유롭게)로 남긴다.
+ * @param {Day[]} days
+ * @param {number} budget                남은 연차 총 개수
+ * @param {Object} [opts]
+ * @param {boolean} [opts.excludeMyeongjeol=false]  설·추석 제외
+ * @param {number}  [opts.minEfficiency=2]          연차 1개당 최소 휴일 수(효율 하한)
+ * @param {number}  [opts.maxLeavePerBridge=2]      브리지 하나에 쓸 연차 상한
+ * @param {?string} [opts.afterISO=null]            이 날짜 이후 연휴만 (지난 건 제외)
+ * @param {string}  [opts.year='all']               'all' | '2026' | '2027'
+ * @returns {LeavePlan}
+ */
+function planLeaves(days, budget, opts = {}) {
+  const {
+    excludeMyeongjeol = false,
+    minEfficiency = 2,
+    maxLeavePerBridge = 2,
+    afterISO = null,
+    year = 'all',
+  } = opts;
+
+  let cands = findStreaks(days, maxLeavePerBridge)
+    .filter((s) => s.cells.some((c) => c.holiday)) // 공휴일에 붙는 것만
+    .filter((s) => s.efficiency >= minEfficiency); // 효율 하한
+  if (excludeMyeongjeol) cands = cands.filter((s) => !isMyeongjeol(s));
+  if (afterISO) cands = cands.filter((s) => s.end >= afterISO);
+  if (year !== 'all') cands = cands.filter((s) => s.start.startsWith(year) || s.end.startsWith(year));
+
+  // 효율 높은 순 → 겹치는 클러스터마다 최고 하나만
+  cands.sort((a, b) => b.efficiency - a.efficiency || b.length - a.length || a.start.localeCompare(b.start));
+  const perCluster = [];
+  for (const s of cands) {
+    if (!perCluster.some((c) => overlaps(c, s))) perCluster.push(s);
+  }
+
+  // 예산 안에서 효율 높은 것부터 담기 (이미 서로 안 겹침)
+  const chosen = [];
+  let used = 0;
+  for (const s of perCluster) {
+    if (used + s.leave > budget) continue; // 예산 초과면 스킵하고 더 싼 다음 것 시도
+    chosen.push(s);
+    used += s.leave;
+  }
+
+  const plan = [...chosen].sort((a, b) => a.start.localeCompare(b.start));
+  const totalRest = chosen.reduce((n, s) => n + s.length, 0);
+  return { plan, used, leftover: Math.max(0, budget - used), totalRest, bridges: chosen.length };
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     buildCalendar,
     findStreaks,
     recommend,
     isMyeongjeol,
+    planLeaves,
     toDate,
     toISO,
     MIN_STREAK_DAYS,

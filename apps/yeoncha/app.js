@@ -7,9 +7,19 @@
   const VALID_LEAVE = [1, 2, 3, 4, 5];
   const VALID_YEAR = ['all', '2026', '2027'];
 
-  // 마지막 선택(연차/연도/명절제외)을 localStorage에서 복원 — 없거나 손상 시 기본값
+  const VALID_MODE = ['find', 'plan'];
+  const BUDGET_MIN = 1;
+  const BUDGET_MAX = 40;
+
+  function clampBudget(n) {
+    const v = Math.floor(Number(n));
+    if (!Number.isFinite(v)) return 15;
+    return Math.max(BUDGET_MIN, Math.min(BUDGET_MAX, v));
+  }
+
+  // 마지막 선택을 localStorage에서 복원 — 없거나 손상 시 기본값
   function loadState() {
-    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false };
+    const fallback = { leave: 2, year: 'all', excludeMyeongjeol: false, mode: 'find', budget: 15 };
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
       if (!saved || typeof saved !== 'object') return fallback;
@@ -17,6 +27,8 @@
         leave: VALID_LEAVE.includes(saved.leave) ? saved.leave : fallback.leave,
         year: VALID_YEAR.includes(saved.year) ? saved.year : fallback.year,
         excludeMyeongjeol: saved.excludeMyeongjeol === true,
+        mode: VALID_MODE.includes(saved.mode) ? saved.mode : fallback.mode,
+        budget: Number.isFinite(saved.budget) ? clampBudget(saved.budget) : fallback.budget,
       };
     } catch (_) {
       return fallback;
@@ -34,6 +46,7 @@
   const state = loadState();
 
   const calendar = buildCalendar(HOLIDAYS, RANGE_START, RANGE_END);
+  const TODAY_ISO = toISO(new Date());
 
   const $ = (sel) => document.querySelector(sel);
   const resultsEl = $('#results');
@@ -192,6 +205,11 @@
   let currentStreaks = [];
 
   function render() {
+    return state.mode === 'plan' ? renderPlan() : renderFind();
+  }
+
+  // "연휴 찾기" — 연차 개수 하나로 만들 수 있는 연휴 목록
+  function renderFind() {
     currentStreaks = recommend(calendar, state.leave, 50)
       .filter(matchYear)
       .filter((s) => daysUntil(s.end) >= 0) // 이미 지나간 연휴 제외
@@ -207,6 +225,36 @@
     const best = currentStreaks[0];
     summaryEl.innerHTML = `연차 <strong>${state.leave}개</strong>면 최대 <strong>${best.length}일</strong> 쉴 수 있어요`;
     resultsEl.innerHTML = currentStreaks.map((s, i) => cardHTML(s, i, i === 0)).join('');
+  }
+
+  // "연차 플래너" — 남은 연차 예산을 효율 브리지에 배분, 남는 건 자유롭게
+  function renderPlan() {
+    const { plan, used, leftover, totalRest, bridges } = planLeaves(calendar, state.budget, {
+      excludeMyeongjeol: state.excludeMyeongjeol,
+      afterISO: TODAY_ISO,
+      year: state.year,
+    });
+    currentStreaks = plan; // 공유/캘린더 버튼이 참조
+
+    if (plan.length === 0) {
+      summaryEl.textContent = '';
+      resultsEl.innerHTML = `<p class="empty">이 조건에 붙일 만한 효율 좋은 연휴가 없어요.<br />연차 ${state.budget}개는 원하는 때 자유롭게 쓰세요 🙂</p>`;
+      return;
+    }
+
+    summaryEl.innerHTML =
+      `효율 좋은 연휴 <strong>${bridges}곳</strong>에 연차 <strong>${used}개</strong> 쓰면 총 <strong>${totalRest}일</strong> 쉬어요` +
+      (leftover > 0 ? ` · 남은 <strong>${leftover}개</strong>는 자유롭게 🎉` : '');
+
+    const cards = plan.map((s, i) => cardHTML(s, i, false)).join('');
+    const leftoverCard =
+      leftover > 0
+        ? `<article class="card leftover">
+             <div class="leftover-big">남은 연차 ${leftover}개</div>
+             <p>공휴일에 붙일 만한 알짜 자리는 여기까지예요. 나머지 ${leftover}개는 아껴뒀다가 원하는 때 자유롭게 쓰세요.</p>
+           </article>`
+        : '';
+    resultsEl.innerHTML = cards + leftoverCard;
   }
 
   resultsEl.addEventListener('click', (e) => {
@@ -239,7 +287,40 @@
     });
   }
 
-  // 복원된 state를 버튼 aria-pressed에 반영 (HTML 기본값 덮어쓰기)
+  // 모드에 따라 연차 개수 선택(찾기) / 남은 연차 입력(플래너) 전환
+  function applyMode() {
+    const findEl = document.getElementById('controls-find');
+    const planEl = document.getElementById('controls-plan');
+    if (findEl) findEl.hidden = state.mode !== 'find';
+    if (planEl) planEl.hidden = state.mode !== 'plan';
+    document
+      .querySelectorAll('.mode-btn')
+      .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+  }
+
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.mode = btn.dataset.mode;
+      applyMode();
+      saveState();
+      render();
+    });
+  });
+
+  const budgetInput = document.getElementById('budget-input');
+  if (budgetInput) {
+    budgetInput.addEventListener('input', () => {
+      state.budget = clampBudget(budgetInput.value);
+      saveState();
+      render();
+    });
+    // 포커스 벗어날 때 표시값도 정규화
+    budgetInput.addEventListener('blur', () => {
+      budgetInput.value = state.budget;
+    });
+  }
+
+  // 복원된 state를 컨트롤에 반영 (HTML 기본값 덮어쓰기)
   function syncControls() {
     document
       .querySelectorAll('.leave-btn')
@@ -248,11 +329,13 @@
       .querySelectorAll('.year-btn')
       .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === state.year)));
     if (mjBtn) mjBtn.setAttribute('aria-pressed', String(state.excludeMyeongjeol));
+    if (budgetInput) budgetInput.value = state.budget;
   }
 
   bindPicker('.leave-btn', 'leave', (btn) => Number(btn.dataset.leave));
   bindPicker('.year-btn', 'year', (btn) => btn.dataset.year);
 
+  applyMode();
   syncControls();
   render();
 })();

@@ -126,6 +126,23 @@
     return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//yeonchasulsa//KR', events, 'END:VCALENDAR'].join('\r\n');
   }
 
+  // 구글 캘린더 원탭 추가 링크 — 연휴 전체를 하루종일 이벤트 1개로 (다운로드 없음)
+  // 구글 TEMPLATE URL은 이벤트 1개만 담을 수 있어 연차일별 대신 연휴 블록으로 등록.
+  function googleCalUrl(s) {
+    const stamp = (iso) => iso.replaceAll('-', '');
+    const nextDay = (iso) => {
+      const d = toDate(iso);
+      return toISO(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
+    };
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: `🏖️ ${s.length}일 연휴 (연차 ${s.leave}개)`,
+      dates: `${stamp(s.start)}/${stamp(nextDay(s.end))}`, // 하루종일: 종료일은 배타적 → +1일
+      details: `연차 쓰는 날: ${fmtLeaveDays(s.leaveDays)}\n— 연차술사`,
+    });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+
   function downloadICS(s) {
     const blob = new Blob([icsFor(s)], { type: 'text/calendar' });
     const a = document.createElement('a');
@@ -165,7 +182,8 @@
         <p class="card-leave-note">연차 쓰는 날 → <b>${fmtLeaveDays(s.leaveDays)}</b></p>
         <div class="card-actions">
           <button class="copy-btn" data-action="share" data-idx="${idx}">공유하기</button>
-          <button class="copy-btn" data-action="ics" data-idx="${idx}">📅 캘린더에 연차 등록</button>
+          <a class="copy-btn" href="${googleCalUrl(s)}" target="_blank" rel="noopener">🗓️ 구글 캘린더</a>
+          <button class="copy-btn" data-action="ics" data-idx="${idx}">📅 캘린더 파일(.ics)</button>
         </div>
       </article>`;
   }

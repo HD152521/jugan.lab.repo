@@ -1,4 +1,4 @@
-# jugan.lab.repo
+﻿# jugan.lab.repo
 
 주차별 학습/프로젝트 모노레포. 시간축(주차별 코드)과 재사용 라이브러리축(스킬·에이전트·프롬프트)을 분리해서 관리한다.
 
@@ -19,6 +19,14 @@
 - [w02-chukui](./weeks/w02-chukui/) — 축의금 계산기 (계획) · 리텐션=경조사 장부
 - [w03-chamgi](./weeks/w03-chamgi/) — 참은 지 N일 (계획) · 바이럴=공유 카운터
 - [w04-baedalbi](./weeks/w04-baedalbi/) — 이번 달 배달비 계산기 (계획) · 바이럴=치킨 환산
+- [w05-sangsa](./weeks/w05-sangsa/) — 상사 말 번역기 (계획) · 바이럴=상황극+제보 사전
+- [w06-gyosu](./weeks/w06-gyosu/) — 교수님 이메일 변환기 (계획) · 시즌=시험기간
+- [w07-yasik](./weeks/w07-yasik/) — 야식 저금통 (계획) · 리텐션=스트릭+목표 게이지
+- [w08-phishing](./weeks/w08-phishing/) — 보이스피싱 판별기 (계획) · 바이럴=효도 공유
+- [w09-cooldown](./weeks/w09-cooldown/) — 싸움 카톡 쿨다운 (계획) · 바이럴=커플 공감
+- [w10-jasoseo](./weeks/w10-jasoseo/) — 자소서 압축기 (계획) · 시즌=공채
+- [w11-yageun](./weeks/w11-yageun/) — 야근 수당 카운터 (예비 슬롯)
+- [w12-gallery](./weeks/w12-gallery/) — 시즌1 전시관+투표 (계획)
 - [w01-example](./weeks/w01-example/) — (템플릿)
 
 ## Git 사용법
